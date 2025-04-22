@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二维坐标系工具</title>
+    <script type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-AMS_HTML"></script>
+    <style>
+        canvas {
+            border: 1px solid black;
+            background-color: #f9f9f9;
+        }
+        #matrixInput {
+            margin-top: 20px;
+        }
+        #matrix {
+            width: 50px;
+        }
+        .matrix-container {
+            display: flex;
+            flex-direction: column;
+        }
+        .matrix-row {
+            display: flex;
+            justify-content: flex-start; /* 左对齐 */
+            margin: 0; /* 去除底部间距 */
+        }
+        #vectorsInfo {
+            margin-top: 20px;
+            font-family: Arial, sans-serif;
+        }
+        #inputCoordinates {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="canvas" width="500" height="500"></canvas>
+<div id="inputCoordinates">
+    <label>输入向量A坐标:</label>
+    <input type="number" id="inputAx" placeholder="X坐标" />
+    <input type="number" id="inputAy" placeholder="Y坐标" />
+    <button id="setCoordinates">设置向量A</button>
+</div>
+<div id="matrixInput">
+    <label>输入二维矩阵 (H):</label>
+    <div class="matrix-container">
+        <div class="matrix-row">
+            <input type="text" id="matrix11" value="1" /> <input type="text" id="matrix12" value="0" />
+        </div>
+        <div class="matrix-row">
+            <input type="text" id="matrix21" value="0" /> <input type="text" id="matrix22" value="1" />
+        </div>
+    </div>
+</div>
+<p id="vectorsInfo"></p>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    let pointA = { x: 250, y: 250 };  // 初始点A
+    let matrix = [[1, 0], [0, 1]];  // 默认为单位矩阵
+    const scaleFactor = 50;  // 缩放因子，方便视觉显示
+
+    function drawAxes() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 绘制网格
+        ctx.strokeStyle = '#e0e0e0';
+        for (let i = 0; i <= 500; i += scaleFactor) {
+            ctx.beginPath();
+            ctx.moveTo(i, 0);
+            ctx.lineTo(i, 500);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, i);
+            ctx.lineTo(500, i);
+            ctx.stroke();
+        }
+
+        ctx.strokeStyle = 'black';
+
+        // 坐标轴
+        ctx.beginPath();
+        ctx.moveTo(0, 250);
+        ctx.lineTo(500, 250); // X轴
+        ctx.moveTo(250, 0);
+        ctx.lineTo(250, 500); // Y轴
+        ctx.stroke();
+
+        // 标记坐标
+        for (let i = -10; i <= 10; i++) {
+            ctx.fillText(i, 250 + i * scaleFactor, 265);
+            ctx.fillText(-i, 235, 250 - i * scaleFactor);
+        }
+    }
+
+    function drawVector(point, color, label) {
+        ctx.beginPath();
+        ctx.moveTo(250, 250); // 原点 O
+        ctx.lineTo(point.x, point.y);
+        ctx.strokeStyle = color;
+        ctx.stroke();
+
+        // 绘制箭头
+        const angle = Math.atan2(point.y - 250, point.x - 250);
+        const arrowLength = 10;
+
+        ctx.beginPath();
+        ctx.moveTo(point.x, point.y);
+        ctx.lineTo(point.x - arrowLength * Math.cos(angle - Math.PI / 6), point.y - arrowLength * Math.sin(angle - Math.PI / 6));
+        ctx.moveTo(point.x, point.y);
+        ctx.lineTo(point.x - arrowLength * Math.cos(angle + Math.PI / 6), point.y - arrowLength * Math.sin(angle + Math.PI / 6));
+        ctx.strokeStyle = color;
+        ctx.stroke();
+
+        // 位置标记字母
+        ctx.fillStyle = 'black';
+        ctx.fillText(label, point.x + 5, point.y - 5);
+    }
+
+    function calculateVectorOB() {
+        const xA = (pointA.x - 250) / scaleFactor;
+        const yA = (250 - pointA.y) / scaleFactor;
+        const xB = matrix[0][0] * xA + matrix[0][1] * yA;
+        const yB = matrix[1][0] * xA + matrix[1][1] * yA;
+        return { x: 250 + xB * scaleFactor, y: 250 - yB * scaleFactor, xB, yB }; // 返回OB坐标和变换后的坐标
+    }
+    
+    function updateDisplay() {
+        drawAxes();
+        drawVector(pointA, 'blue', 'A');
+        const pointB = calculateVectorOB();
+        drawVector(pointB, 'red', 'B');
+        
+        const lengthOA = Math.sqrt(Math.pow(pointA.x - 250, 2) + Math.pow(pointA.y - 250, 2)) / scaleFactor;
+        const lengthOB = Math.sqrt(Math.pow(pointB.x - 250, 2) + Math.pow(pointB.y - 250, 2)) / scaleFactor;
+        const ratio = lengthOB / lengthOA;
+
+        document.getElementById('vectorsInfo').innerHTML = 
+            `\\[ OA = \\left(${(pointA.x - 250) / scaleFactor}, ${-(pointA.y - 250) / scaleFactor}\\right) \\]` +
+            `\\[ OB = H \\times OA= \\left(\\begin{bmatrix} ${pointB.xB.toFixed(2)} \\\\ ${pointB.yB.toFixed(2)} \\end{bmatrix} \\right) \\]` +
+            `\\[ \\lambda = \\frac{|OB|}{|OA|} = \\frac{${lengthOB.toFixed(2)}}{${lengthOA.toFixed(2)}} = ${ratio.toFixed(2)}\\]`;
+
+        MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+    }
+
+    function updateMatrix() {
+        matrix[0][0] = parseFloat(document.getElementById('matrix11').value);
+        matrix[0][1] = parseFloat(document.getElementById('matrix12').value);
+        matrix[1][0] = parseFloat(document.getElementById('matrix21').value);
+        matrix[1][1] = parseFloat(document.getElementById('matrix22').value);
+        updateDisplay();
+    }
+
+    function setPointAFromInputs() {
+        const ax = parseFloat(document.getElementById('inputAx').value);
+        const ay = parseFloat(document.getElementById('inputAy').value);
+        if (!isNaN(ax) && !isNaN(ay)) {
+            pointA = { x: 250 + ax * scaleFactor, y: 250 - ay * scaleFactor };
+            updateDisplay();
+        } else {
+            alert("请输入有效的坐标值");
+        }
+    }
+
+    document.getElementById('setCoordinates').addEventListener('click', setPointAFromInputs);
+    document.getElementById('matrix11').addEventListener('input', updateMatrix);
+    document.getElementById('matrix12').addEventListener('input', updateMatrix);
+    document.getElementById('matrix21').addEventListener('input', updateMatrix);
+    document.getElementById('matrix22').addEventListener('input', updateMatrix);
+
+    canvas.addEventListener('click', (event) => {
+        const rect = canvas.getBoundingClientRect();
+        pointA.x = event.clientX - rect.left;
+        pointA.y = event.clientY - rect.top;
+        updateDisplay();
+    });
+
+    canvas.addEventListener('mousedown', (event) => {
+        const rect = canvas.getBoundingClientRect();
+        const offsetX = event.clientX - rect.left;
+        const offsetY = event.clientY - rect.top;
+
+        canvas.addEventListener('mousemove', onMouseMove);
+
+        canvas.addEventListener('mouseup', () => {
+            canvas.removeEventListener('mousemove', onMouseMove);
+        });
+
+        function onMouseMove(event) {
+            pointA.x = event.clientX - rect.left;
+            pointA.y = event.clientY - rect.top;
+            updateDisplay();
+        }
+    });
+
+    updateDisplay(); // 初始显示
+</script>
+
+</body>
+</html>
